@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>မြန်မာ ဘီယာဆိုင် Pixel Game (Myanmar Beer Shop Sim)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Padauk:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Padauk', 'Press Start 2P', sans-serif;
+            background-color: #1a1008;
+            color: #f3e5ab;
+            user-select: none;
+            overflow: hidden;
+        }
+        .pixel-font {
+            font-family: 'Press Start 2P', cursive;
+        }
+        .myanmar-font {
+            font-family: 'Padauk', sans-serif;
+        }
+        /* Pixelated graphics crisp rendering */
+        canvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            border: 4px solid #5c3a21;
+        }
+        .pixel-panel {
+            background: #3a2312;
+            border: 4px solid #8b5a2b;
+            box-shadow: inset -4px -4px 0px #211309, inset 4px 4px 0px #bd834c;
+        }
+        .pixel-btn {
+            background: #8b5a2b;
+            border: 3px solid #f5c77e;
+            box-shadow: inset -3px -3px 0px #4a2e14, inset 3px 3px 0px #d49b54;
+            transition: transform 0.05s, background-color 0.1s;
+        }
+        .pixel-btn:hover {
+            background: #a46c36;
+            transform: scale(1.02);
+        }
+        .pixel-btn:active {
+            transform: scale(0.96);
+            box-shadow: inset 3px 3px 0px #4a2e14;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #211309; }
+        ::-webkit-scrollbar-thumb { background: #8b5a2b; border-radius: 4px; }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col items-center justify-between p-2 md:p-4 bg-amber-950">
+
+    <!-- Top Navigation HUD -->
+    <header class="w-full max-w-5xl pixel-panel p-3 rounded-lg flex flex-wrap justify-between items-center gap-2 mb-2">
+        <!-- Title & Info -->
+        <div class="flex items-center gap-3">
+            <span class="text-2xl md:text-3xl">🍺</span>
+            <div>
+                <h1 id="ui-title" class="text-base md:text-xl font-bold text-amber-300 drop-shadow">မြန်မာ ဘီယာဆိုင် Sim</h1>
+                <p id="ui-subtitle" class="text-xs text-amber-200/80">Stardew Style Retro Game</p>
+            </div>
+        </div>
+
+        <!-- Dashboard Stats -->
+        <div class="flex items-center gap-4 text-xs md:text-sm">
+            <div class="flex items-center gap-1 bg-amber-950/80 px-3 py-1.5 rounded border border-amber-700">
+                <span class="text-yellow-400">💰</span>
+                <span id="stat-money" class="font-bold text-yellow-300">1000</span>
+                <span id="ui-kyats" class="text-xs">ကျပ်</span>
+            </div>
+            <div class="flex items-center gap-1 bg-amber-950/80 px-3 py-1.5 rounded border border-amber-700">
+                <span class="text-red-400">❤️</span>
+                <span id="stat-reputation" class="font-bold text-red-300">100%</span>
+            </div>
+            <div class="flex items-center gap-1 bg-amber-950/80 px-3 py-1.5 rounded border border-amber-700">
+                <span class="text-blue-400">👥</span>
+                <span id="stat-served" class="font-bold text-blue-300">0</span>
+            </div>
+            <!-- Day & Shop Status Badge -->
+            <div id="badge-shop-status" class="flex items-center gap-1 bg-green-950 px-3 py-1.5 rounded border border-green-600 font-bold text-green-300 text-xs">
+                🟢 OPEN
+            </div>
+        </div>
+
+        <!-- Controls / Actions -->
+        <div class="flex items-center gap-2">
+            <button id="btn-toggle-shop" class="pixel-btn px-3 py-1.5 text-xs font-bold text-amber-100 rounded bg-red-800">
+                🚪 ဆိုင်ပိတ်မည်
+            </button>
+            <button id="btn-bgm" class="pixel-btn px-3 py-1.5 text-xs font-bold text-amber-100 rounded">
+                🎵 BGM: OFF
+            </button>
+            <button id="btn-lang" class="pixel-btn px-3 py-1.5 text-xs font-bold text-amber-100 rounded">
+                🌐 Eng / မြန်မာ
+            </button>
+            <button id="btn-sound" class="pixel-btn px-3 py-1.5 text-xs font-bold text-amber-100 rounded">
+                🔊 SFX: ON
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Game Canvas Container -->
+    <main class="relative flex-1 w-full max-w-5xl flex items-center justify-center overflow-hidden">
+        <canvas id="gameCanvas" width="800" height="500" class="rounded-lg max-w-full max-h-full object-contain cursor-pointer"></canvas>
+        
+        <!-- Overlay Menu / Upgrade Shop -->
+        <div id="upgrade-modal" class="hidden absolute inset-0 bg-black/75 flex items-center justify-center p-4">
+            <div class="pixel-panel w-full max-w-md p-5 rounded-lg text-center flex flex-col gap-4">
+                <h2 id="ui-upgrade-title" class="text-lg font-bold text-amber-300">ဆိုင် အဆင့်မြှင့်တင်ရန် (Upgrades)</h2>
+                
+                <div class="space-y-3 text-left text-xs md:text-sm">
+                    <!-- Upgrade Item 1: Speed -->
+                    <div class="flex justify-between items-center p-2 bg-amber-950/60 rounded border border-amber-800">
+                        <div>
+                            <div id="ui-upg-speed-name" class="font-bold text-amber-200">စားပွဲထိုး အမြန်နှုန်း (Waiter Speed)</div>
+                            <div id="ui-upg-speed-desc" class="text-xs text-amber-400/80">ပိုမို မြန်ဆန်စွာ သွားလာနိုင်မည်</div>
+                        </div>
+                        <button id="btn-upg-speed" class="pixel-btn px-3 py-1.5 text-xs text-amber-100 rounded">
+                            500 Ks
+                        </button>
+                    </div>
+
+                    <!-- Upgrade Item 2: Add Table -->
+                    <div class="flex justify-between items-center p-2 bg-amber-950/60 rounded border border-amber-800">
+                        <div>
+                            <div id="ui-upg-table-name" class="font-bold text-amber-200">စားပွဲ အသစ်တိုးရန် (Add Table)</div>
+                            <div id="ui-upg-table-desc" class="text-xs text-amber-400/80">ဧည့်သည် ပိုမို လက်ခံနိုင်မည်</div>
+                        </div>
+                        <button id="btn-upg-table" class="pixel-btn px-3 py-1.5 text-xs text-amber-100 rounded">
+                            700 Ks
+                        </button>
+                    </div>
+
+                    <!-- Upgrade Item 3: Unlock Menu Item -->
+            <div class="flex justify-between items-center p-2 bg-amber-950/60 rounded border border-amber-800">
+                <div>
+                    <div id="ui-upg-menu-name" class="font-bold text-amber-200">ဟင်းပွဲသစ် သော့ဖွင့်ရန် (Special Menu)</div>
+                    <div id="ui-upg-menu-desc" class="text-xs text-amber-400/80">အရက်၊ ၁၂ မျိုးဟင်းချို၊ အကင် သော့ဖွင့်ရန်</div>
+                </div>
+                <button id="btn-upg-menu" class="pixel-btn px-3 py-1.5 text-xs text-amber-100 rounded">
+                    1000 Ks
+                </button>
+            </div>
+        </div>
+
+        <button id="btn-close-upgrade" class="pixel-btn px-4 py-2 text-sm text-amber-100 rounded mt-2 self-center">
+            ပိတ်မည် (Close)
+        </button>
+    </div>
+</div>
+</main>
+
+<!-- Custom Floating Tooltip for Hovered Food Items -->
+<div id="food-tooltip" class="fixed hidden pointer-events-none bg-amber-950/95 border-2 border-amber-500 text-amber-200 px-3 py-1.5 rounded shadow-2xl text-xs z-50 transition-opacity duration-150">
+    <div id="tooltip-title" class="font-bold text-amber-300 text-sm"></div>
+    <div id="tooltip-price" class="text-yellow-400 text-xs"></div>
+</div>
+
+<!-- Bottom Action Controls Bar -->
+<footer class="w-full max-w-5xl pixel-panel p-2 rounded-lg flex justify-between items-center gap-2 mt-2">
+        <div id="ui-instructions" class="text-xs text-amber-200/90 hidden sm:block">
+            💡 နှိပ်ပါ (Click): စားပွဲ၊ ကောင်တာ သို့မဟုတ် စားသုံးသူများထံ သွားရောက်ရန်
+        </div>
+        <div class="flex items-center gap-3 ml-auto">
+            <button id="btn-open-upgrade" class="pixel-btn px-4 py-1.5 text-xs font-bold text-amber-100 rounded flex items-center gap-1">
+                <span>🔨</span> <span id="ui-btn-shop">ဆိုင်မြှင့်ရန်</span>
+            </button>
+        </div>
+    </footer>
+
+    <!-- Audio & Game Engine Logic -->
+    <script>
+        // --- Web Audio API Sound & Music Synthesizer ---
+        class AudioFX {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+                this.bgmMuted = true;
+                this.bgmOsc = null;
+                this.bgmTimer = null;
+                this.noteIndex = 0;
+            }
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) this.ctx = new AudioCtx();
+                }
+            }
+            playTone(freq, type, duration, gainVal = 0.1) {
+                if (this.muted) return;
+                this.init();
+                if (!this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e){}
+            }
+            playStep() { this.playTone(150, 'triangle', 0.05, 0.03); }
+            playPop() { this.playTone(400, 'sine', 0.08, 0.1); }
+            playCoin() {
+                this.playTone(523.25, 'sine', 0.08, 0.15);
+                setTimeout(() => this.playTone(659.25, 'sine', 0.15, 0.15), 60);
+            }
+            playBell() { this.playTone(880, 'sine', 0.3, 0.1); }
+            playAngry() { this.playTone(120, 'sawtooth', 0.25, 0.15); }
+
+            // Stardew-style Pixel Retro Chiptune Loop
+            toggleBGM() {
+                this.init();
+                this.bgmMuted = !this.bgmMuted;
+                if (!this.bgmMuted) {
+                    this.startBGM();
+                } else {
+                    this.stopBGM();
+                }
+                return !this.bgmMuted;
+            }
+            startBGM() {
+                if (!this.ctx) return;
+                const melody = [
+                    261.63, 329.63, 392.00, 523.25, 392.00, 329.63, 293.66, 349.23,
+                    440.00, 349.23, 293.66, 261.63, 329.63, 392.00, 440.00, 392.00
+                ];
+                if (this.bgmTimer) clearInterval(this.bgmTimer);
+                this.bgmTimer = setInterval(() => {
+                    if (this.bgmMuted || !this.ctx) return;
+                    const freq = melody[this.noteIndex % melody.length];
+                    this.playTone(freq, 'square', 0.18, 0.025);
+                    this.noteIndex++;
+                }, 220);
+            }
+            stopBGM() {
+                if (this.bgmTimer) clearInterval(this.bgmTimer);
+            }
+        }
+
+        const sfx = new AudioFX();
+
+        // --- Game Translations & Data ---
+        let currentLang = 'my';
+        const I18N = {
+            my: {
+                title: "မြန်မာ ဘီယာဆိုင် Sim",
+                subtitle: "Stardew Style Retro Game",
+                kyats: "ကျပ်",
+                kitchen: "မီးဖိုချောင်/ကောင်တာ",
+                shopBtn: "ဆိုင်မြှင့်ရန်",
+                instructions: "💡 နှိပ်ပါ (Click): စားပွဲ၊ ကောင်တာ သို့မဟုတ် စားသုံးသူများထံ သွားရောက်ရန်",
+                upgradeTitle: "ဆိုင် အဆင့်မြှင့်တင်ရန် (Upgrades)",
+                upgSpeedName: "စားပွဲထိုး အမြန်နှုန်း (Waiter Speed)",
+                upgSpeedDesc: "ပိုမို မြန်ဆန်စွာ သွားလာနိုင်မည်",
+                upgTableName: "စားပွဲ အသစ်တိုးရန် (Add Table)",
+                upgTableDesc: "ဧည့်သည် ပိုမို လက်ခံနိုင်မည် (၆ ခုံအထိ)",
+                upgMenuName: "ဟင်းပွဲသစ် သော့ဖွင့်ရန် (Special Menu)",
+                upgMenuDesc: "အရက်၊ ၁၂ မျိုးဟင်းချို၊ အကင် သော့ဖွင့်ရန်",
+                close: "ပိတ်မည် (Close)",
+                maxed: "အပြည့် (Maxed)",
+                openShop: "🚪 ဆိုင်ဖွင့်မည်",
+                closeShop: "🚪 ဆိုင်ပိတ်မည်"
+            },
+            en: {
+                title: "Myanmar Beer Shop Sim",
+                subtitle: "Stardew Style Retro Game",
+                kyats: "MMK",
+                kitchen: "Kitchen & Bar",
+                shopBtn: "Upgrades",
+                instructions: "💡 Click / Tap tables or kitchen counter to move waiter",
+                upgradeTitle: "Shop Upgrades",
+                upgSpeedName: "Waiter Speed Up",
+                upgSpeedDesc: "Move faster between tables",
+                upgTableName: "Expand Dining Area",
+                upgTableDesc: "Add extra customer tables (Up to 6)",
+                upgMenuName: "Unlock Special Menu",
+                upgMenuDesc: "Unlocks Liquor, 12-Ingredient Soup & BBQ",
+                close: "Close",
+                maxed: "Maxed",
+                openShop: "🚪 Open Shop",
+                closeShop: "🚪 Close Shop"
+            }
+        };
+
+        const MENU = [
+            { id: 'beer', nameMy: 'ဘီယာ', nameEn: 'Draft Beer', price: 1500, icon: '🍺', unlocked: true },
+            { id: 'noodle', nameMy: 'ခေါက်ဆွဲကြော်', nameEn: 'Fried Noodles', price: 2500, icon: '🍜', unlocked: true },
+            { id: 'vermicelli', nameMy: 'ကြာဇံကြော်', nameEn: 'Fried Vermicelli', price: 2500, icon: '🍝', unlocked: true },
+            { id: 'tea_salad', nameMy: 'အဖိုးကြီးလက်ဖက်သုတ်', nameEn: 'Tea Leaf Salad', price: 2000, icon: '🥗', unlocked: true },
+            { id: 'peanuts', nameMy: 'ဂျိုကာမြေပဲ', nameEn: 'Roasted Peanuts', price: 1000, icon: '🥜', unlocked: true },
+            { id: 'liquor', nameMy: 'အရက်', nameEn: 'Myanmar Liquor', price: 3500, icon: '🍾', unlocked: false },
+            { id: 'soup', nameMy: '၁၂ မျိုးဟင်းချို', nameEn: '12-Ingredient Soup', price: 3000, icon: '🍲', unlocked: false },
+            { id: 'bbq', nameMy: 'အကင်စုံ', nameEn: 'Assorted BBQ', price: 4000, icon: '🍢', unlocked: false }
+        ];
+
+        // --- Game Canvas State ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let money = 1000;
+        let reputation = 100;
+        let servedCount = 0;
+        let customerSpawnTimer = 0;
+        let spawnInterval = 300;
+        let isShopOpen = true;
+
+        // Map Objects - Adjusted Kitchen Width & Positions for neat fit
+        const kitchenCounter = { x: 650, y: 100, width: 130, height: 350 };
+        const exitDoor = { x: 30, y: 410, width: 70, height: 80 };
+
+        // Food item positions on counter for hover interaction
+        let counterFoodItems = [];
+
+        let maxTables = 3; // Expanded limit up to 6 tables
+        let speedLevel = 0;
+        const tables = [
+            { id: 1, x: 140, y: 130, width: 70, height: 70, active: true, customer: null, status: 'empty' },
+            { id: 2, x: 320, y: 130, width: 70, height: 70, active: true, customer: null, status: 'empty' },
+            { id: 3, x: 500, y: 130, width: 70, height: 70, active: true, customer: null, status: 'empty' },
+            { id: 4, x: 140, y: 300, width: 70, height: 70, active: false, customer: null, status: 'empty' },
+            { id: 5, x: 320, y: 300, width: 70, height: 70, active: false, customer: null, status: 'empty' },
+            { id: 6, x: 500, y: 300, width: 70, height: 70, active: false, customer: null, status: 'empty' }
+        ];
+
+        // Waiter / Player Character State
+        const waiter = {
+            x: 400,
+            y: 280,
+            targetX: 400,
+            targetY: 280,
+            speed: 3.5,
+            holdingItem: null,
+            targetAction: null,
+            animTimer: 0
+        };
+
+        const customers = [];
+
+        // --- Customer Class with Emotions/Satisfaction ---
+        class Customer {
+            constructor(table) {
+                this.table = table;
+                this.x = exitDoor.x + 20;
+                this.y = exitDoor.y + 20;
+                this.targetX = table.x + table.width / 2;
+                this.targetY = table.y + table.height / 2;
+                this.speed = 2.0;
+                
+                const availableMenu = MENU.filter(m => m.unlocked);
+                this.order = availableMenu[Math.floor(Math.random() * availableMenu.length)];
+
+                const shirtColors = ['#0284c7', '#16a34a', '#9333ea', '#ea580c', '#db2777'];
+                const skinColors = ['#fca5a5', '#fde047', '#fed7aa', '#d97706'];
+                this.shirtColor = shirtColors[Math.floor(Math.random() * shirtColors.length)];
+                this.skinColor = skinColors[Math.floor(Math.random() * skinColors.length)];
+                this.hat = Math.random() > 0.5;
+
+                this.state = 'WALKING_IN';
+                this.patience = 100;
+                this.patienceMax = 100;
+                this.eatingTimer = 0;
+                this.frame = 0;
+                this.emotion = '😊'; // 😊 Happy | 😐 Impatient | 😡 Angry
+            }
+
+            update() {
+                this.frame += 0.15;
+                if (this.state === 'WALKING_IN') {
+                    const dx = this.targetX - this.x;
+                    const dy = this.targetY - this.y;
+                    const dist = Math.hypot(dx, dy);
+                    if (dist < 4) {
+                        this.x = this.targetX;
+                        this.y = this.targetY;
+                        this.state = 'WAITING_ORDER';
+                        sfx.playPop();
+                    } else {
+                        this.x += (dx / dist) * this.speed;
+                        this.y += (dy / dist) * this.speed;
+                    }
+                } 
+                else if (this.state === 'WAITING_ORDER' || this.state === 'WAITING_FOOD') {
+                    this.patience -= 0.05;
+
+                    // Emotional Reactions based on Patience
+                    if (this.patience > 50) {
+                        this.emotion = '😊';
+                    } else if (this.patience > 25) {
+                        if (this.emotion !== '😐') {
+                            this.emotion = '😐';
+                            createFloatingText("အော်ဒါကြာနေတယ်! 😐", this.x, this.y - 25, '#f59e0b');
+                        }
+                    } else {
+                        if (this.emotion !== '😡') {
+                            this.emotion = '😡';
+                            sfx.playAngry();
+                            createFloatingText("စိတ်တိုပြီ! 😡", this.x, this.y - 25, '#ef4444');
+                        }
+                    }
+
+                    if (this.patience <= 0) {
+                        this.leave(false);
+                    }
+                }
+                else if (this.state === 'EATING') {
+                    this.eatingTimer++;
+                    if (this.eatingTimer > 250) {
+                        money += this.order.price;
+                        servedCount++;
+                        sfx.playCoin();
+                        createFloatingText(`+${this.order.price} Ks`, this.x, this.y - 20, '#fbbf24');
+                        this.leave(true);
+                    }
+                }
+                else if (this.state === 'LEAVING') {
+                    const dx = exitDoor.x - this.x;
+                    const dy = exitDoor.y - this.y;
+                    const dist = Math.hypot(dx, dy);
+                    if (dist < 8) {
+                        this.table.customer = null;
+                        this.table.status = 'empty';
+                        return true;
+                    } else {
+                        this.x += (dx / dist) * this.speed;
+                        this.y += (dy / dist) * this.speed;
+                    }
+                }
+                return false;
+            }
+
+            leave(satisfied) {
+                if (!satisfied) {
+                    reputation = Math.max(0, reputation - 12);
+                    createFloatingText("စိတ်ဆိုးထွက်သွားသည်! 😡 -12% Rep", this.x - 20, this.y - 20, '#ef4444');
+                }
+                this.state = 'LEAVING';
+            }
+
+            draw() {
+                ctx.save();
+                
+                // Shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.beginPath();
+                ctx.ellipse(this.x, this.y + 12, 10, 5, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                const isMoving = (this.state === 'WALKING_IN' || this.state === 'LEAVING');
+                const bounce = isMoving ? Math.abs(Math.sin(this.frame * 2)) * 3 : 0;
+                const legSwing = isMoving ? Math.sin(this.frame * 2) * 6 : 0;
+
+                // Legs
+                ctx.fillStyle = '#1e293b';
+                if (isMoving) {
+                    ctx.fillRect(this.x - 5 + legSwing, this.y + 2, 4, 10);
+                    ctx.fillRect(this.x + 1 - legSwing, this.y + 2, 4, 10);
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(this.x - 6 + legSwing, this.y + 10, 5, 3);
+                    ctx.fillRect(this.x + 1 - legSwing, this.y + 10, 5, 3);
+                } else {
+                    ctx.fillRect(this.x - 6, this.y + 2, 5, 9);
+                    ctx.fillRect(this.x + 1, this.y + 2, 5, 9);
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(this.x - 7, this.y + 10, 6, 3);
+                    ctx.fillRect(this.x + 1, this.y + 10, 6, 3);
+                }
+
+                // Torso
+                ctx.fillStyle = this.shirtColor;
+                ctx.fillRect(this.x - 8, this.y - 12 - bounce, 16, 14);
+
+                // Arms
+                ctx.fillStyle = this.skinColor;
+                if (this.state === 'EATING') {
+                    const armBounce = Math.sin(this.frame * 3) * 3;
+                    ctx.fillRect(this.x - 11, this.y - 6 - bounce + armBounce, 4, 6);
+                    ctx.fillRect(this.x + 7, this.y - 6 - bounce - armBounce, 4, 6);
+                } else if (isMoving) {
+                    ctx.fillRect(this.x - 11, this.y - 10 - bounce - legSwing * 0.5, 3, 8);
+                    ctx.fillRect(this.x + 8, this.y - 10 - bounce + legSwing * 0.5, 3, 8);
+                } else {
+                    ctx.fillRect(this.x - 11, this.y - 8, 3, 8);
+                    ctx.fillRect(this.x + 8, this.y - 8, 3, 8);
+                }
+
+                // Head
+                ctx.fillStyle = this.skinColor;
+                ctx.fillRect(this.x - 7, this.y - 24 - bounce, 14, 12);
+
+                if (this.hat) {
+                    ctx.fillStyle = '#451a03';
+                    ctx.fillRect(this.x - 8, this.y - 27 - bounce, 16, 5);
+                }
+
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(this.x - 4, this.y - 20 - bounce, 2, 3);
+                ctx.fillRect(this.x + 2, this.y - 20 - bounce, 2, 3);
+
+                // Speech Bubble & Satisfaction Status
+                if (this.state === 'WAITING_ORDER' || this.state === 'WAITING_FOOD') {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.strokeStyle = this.emotion === '😡' ? '#ef4444' : '#27190e';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.roundRect(this.x - 24, this.y - 58 - bounce, 48, 26, 6);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.moveTo(this.x - 4, this.y - 32 - bounce);
+                    ctx.lineTo(this.x, this.y - 26 - bounce);
+                    ctx.lineTo(this.x + 4, this.y - 32 - bounce);
+                    ctx.fill();
+
+                    if (this.state === 'WAITING_ORDER') {
+                        ctx.font = '12px sans-serif';
+                        ctx.fillText(`${this.emotion}❓`, this.x - 14, this.y - 40 - bounce);
+                    } else if (this.state === 'WAITING_FOOD') {
+                        ctx.font = '12px sans-serif';
+                        ctx.fillText(`${this.emotion}${this.order.icon}`, this.x - 16, this.y - 39 - bounce);
+                    }
+
+                    const barWidth = 40;
+                    const pct = Math.max(0, this.patience / this.patienceMax);
+                    ctx.fillStyle = '#451a03';
+                    ctx.fillRect(this.x - 20, this.y - 64 - bounce, barWidth, 4);
+                    ctx.fillStyle = pct > 0.5 ? '#22c55e' : (pct > 0.25 ? '#eab308' : '#ef4444');
+                    ctx.fillRect(this.x - 20, this.y - 64 - bounce, barWidth * pct, 4);
+                } 
+                else if (this.state === 'EATING') {
+                    ctx.font = '14px sans-serif';
+                    ctx.fillText('😋 ' + this.order.icon, this.x - 14, this.y - 35 - bounce);
+                }
+
+                ctx.restore();
+            }
+        }
+
+        // --- Floating Text Effects Array ---
+        let floatingTexts = [];
+        function createFloatingText(text, x, y, color) {
+            floatingTexts.push({ text, x, y, color, alpha: 1.0, life: 60 });
+        }
+
+        function updateFloatingTexts() {
+            for (let i = floatingTexts.length - 1; i >= 0; i--) {
+                let ft = floatingTexts[i];
+                ft.y -= 0.6;
+                ft.alpha -= 0.015;
+                ft.life--;
+                if (ft.life <= 0) {
+                    floatingTexts.splice(i, 1);
+                }
+            }
+        }
+
+        function drawFloatingTexts() {
+            floatingTexts.forEach(ft => {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, ft.alpha);
+                ctx.fillStyle = ft.color;
+                ctx.font = 'bold 13px Padauk, sans-serif';
+                ctx.fillText(ft.text, ft.x - 15, ft.y);
+                ctx.restore();
+            });
+        }
+
+        // --- Game Setup & Spawner ---
+        function spawnCustomer() {
+            if (!isShopOpen) return; // Do not spawn if shop is closed
+            const emptyTables = tables.filter(t => t.active && t.status === 'empty');
+            if (emptyTables.length > 0) {
+                const randomTable = emptyTables[Math.floor(Math.random() * emptyTables.length)];
+                randomTable.status = 'reserved';
+                const c = new Customer(randomTable);
+                randomTable.customer = c;
+                customers.push(c);
+            }
+        }
+
+        // --- User Interaction Handler ---
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const clickX = (e.clientX - rect.left) * scaleX;
+            const clickY = (e.clientY - rect.top) * scaleY;
+
+            waiter.targetX = clickX;
+            waiter.targetY = clickY;
+
+            tables.forEach(t => {
+                if (t.active && clickX >= t.x && clickX <= t.x + t.width && clickY >= t.y && clickY <= t.y + t.height) {
+                    waiter.targetAction = { type: 'TABLE', object: t };
+                }
+            });
+
+            if (clickX >= kitchenCounter.x - 30) {
+                waiter.targetAction = { type: 'KITCHEN' };
+            }
+        });
+
+        // --- Game Logic Update ---
+        function update() {
+            if (isShopOpen) {
+                customerSpawnTimer++;
+                if (customerSpawnTimer >= spawnInterval) {
+                    customerSpawnTimer = 0;
+                    spawnCustomer();
+                    spawnInterval = Math.max(120, spawnInterval - 3);
+                }
+            }
+
+            for (let i = customers.length - 1; i >= 0; i--) {
+                const remove = customers[i].update();
+                if (remove) customers.splice(i, 1);
+            }
+
+            const dx = waiter.targetX - waiter.x;
+            const dy = waiter.targetY - waiter.y;
+            const dist = Math.hypot(dx, dy);
+
+            if (dist > 3) {
+                waiter.x += (dx / dist) * waiter.speed;
+                waiter.y += (dy / dist) * waiter.speed;
+                waiter.animTimer += 0.2;
+                if (Math.floor(waiter.animTimer) % 4 === 0) {
+                    sfx.playStep();
+                }
+            } else {
+                if (waiter.targetAction) {
+                    handleWaiterAction(waiter.targetAction);
+                    waiter.targetAction = null;
+                }
+            }
+
+            document.getElementById('stat-money').innerText = money.toLocaleString();
+            document.getElementById('stat-reputation').innerText = Math.round(reputation) + '%';
+            document.getElementById('stat-served').innerText = servedCount;
+
+            updateFloatingTexts();
+        }
+
+        // --- Action Dispatcher ---
+        function handleWaiterAction(action) {
+            if (action.type === 'TABLE') {
+                const table = action.object;
+                const cust = table.customer;
+                if (!cust) return;
+
+                if (cust.state === 'WAITING_ORDER') {
+                    cust.state = 'WAITING_FOOD';
+                    sfx.playBell();
+                    createFloatingText(`Order: ${getDishName(cust.order)}`, cust.x, cust.y - 20, '#3b82f6');
+                }
+                else if (cust.state === 'WAITING_FOOD') {
+                    if (waiter.holdingItem && waiter.holdingItem.id === cust.order.id) {
+                        cust.state = 'EATING';
+                        waiter.holdingItem = null;
+                        sfx.playPop();
+                        createFloatingText("Enjoy! 😋", cust.x, cust.y - 20, '#22c55e');
+                    } else if (waiter.holdingItem) {
+                        createFloatingText("Wrong Item! ❌", cust.x, cust.y - 20, '#ef4444');
+                    } else {
+                        createFloatingText("Pick up food from kitchen!", cust.x, cust.y - 20, '#eab308');
+                    }
+                }
+            } 
+            else if (action.type === 'KITCHEN') {
+                const waitingCust = customers.find(c => c.state === 'WAITING_FOOD');
+                if (waitingCust) {
+                    waiter.holdingItem = waitingCust.order;
+                    sfx.playPop();
+                    createFloatingText(`Got: ${getDishName(waitingCust.order)}!`, waiter.x, waiter.y - 20, '#3b82f6');
+                } else {
+                    createFloatingText("No pending food orders!", waiter.x, waiter.y - 20, '#9ca3af');
+                }
+            }
+        }
+
+        function getDishName(order) {
+            return currentLang === 'my' ? order.nameMy : order.nameEn;
+        }
+
+        // Mouse Hover Event for Food Tooltip
+        const tooltip = document.getElementById('food-tooltip');
+        const tooltipTitle = document.getElementById('tooltip-title');
+        const tooltipPrice = document.getElementById('tooltip-price');
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const mouseX = (e.clientX - rect.left) * scaleX;
+            const mouseY = (e.clientY - rect.top) * scaleY;
+
+            let hoveredFood = null;
+            for (let item of counterFoodItems) {
+                if (mouseX >= item.x && mouseX <= item.x + item.w && mouseY >= item.y && mouseY <= item.y + item.h) {
+                    hoveredFood = item.menu;
+                    break;
+                }
+            }
+
+            if (hoveredFood) {
+                tooltipTitle.innerText = `${hoveredFood.icon} ${getDishName(hoveredFood)}`;
+                tooltipPrice.innerText = `💰 ${hoveredFood.price.toLocaleString()} Ks`;
+                tooltip.style.left = `${e.clientX + 15}px`;
+                tooltip.style.top = `${e.clientY + 15}px`;
+                tooltip.classList.remove('hidden');
+            } else {
+                tooltip.classList.add('hidden');
+            }
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            tooltip.classList.add('hidden');
+        });
+
+        // --- Render Functions ---
+        function drawScene() {
+            ctx.fillStyle = '#4a2c17';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = '#3b2211';
+            ctx.lineWidth = 2;
+            for (let x = 0; x < canvas.width; x += 40) {
+                for (let y = 0; y < canvas.height; y += 40) {
+                    ctx.strokeRect(x, y, 40, 40);
+                }
+            }
+
+            ctx.fillStyle = '#2b180c';
+            ctx.fillRect(0, 0, canvas.width, 70);
+            ctx.fillStyle = '#8b5a2b';
+            ctx.fillRect(0, 65, canvas.width, 10);
+
+            // Shop Banner
+            ctx.fillStyle = isShopOpen ? '#b91c1c' : '#451a03';
+            ctx.fillRect(300, 10, 200, 35);
+            ctx.fillStyle = '#f5c77e';
+            ctx.font = 'bold 14px Padauk, cursive';
+            const bannerText = isShopOpen ? (currentLang === 'my' ? '🍺 မြန်မာ ဘီယာဆိုင် (OPEN) 🍺' : '🍺 BEER SHOP (OPEN) 🍺') : (currentLang === 'my' ? '🔒 ဆိုင်ပိတ်ထားသည် (CLOSED)' : '🔒 SHOP CLOSED');
+            ctx.fillText(bannerText, 310, 34);
+
+            ctx.fillStyle = '#1c1008';
+            ctx.fillRect(exitDoor.x, exitDoor.y, exitDoor.width, exitDoor.height);
+            ctx.fillStyle = '#f59e0b';
+            ctx.font = '12px sans-serif';
+            ctx.fillText('EXIT 🚪', exitDoor.x + 8, exitDoor.y + 30);
+
+            // Kitchen Counter Draw
+            ctx.fillStyle = '#653c19';
+            ctx.fillRect(kitchenCounter.x, kitchenCounter.y, kitchenCounter.width, kitchenCounter.height);
+            ctx.strokeStyle = '#3b2211';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(kitchenCounter.x, kitchenCounter.y, kitchenCounter.width, kitchenCounter.height);
+            
+            ctx.fillStyle = '#fde047';
+            ctx.font = 'bold 12px Padauk, sans-serif';
+            ctx.fillText(I18N[currentLang].kitchen, kitchenCounter.x + 8, kitchenCounter.y + 25);
+
+            // Draw Food Items Neatly inside Counter Shelf Grid and track hover areas
+            counterFoodItems = [];
+            let startX = kitchenCounter.x + 12;
+            let startY = kitchenCounter.y + 45;
+            let colWidth = 55;
+            let rowHeight = 35;
+
+            MENU.forEach((item, idx) => {
+                let col = idx % 2;
+                let row = Math.floor(idx / 2);
+                let itemX = startX + col * colWidth;
+                let itemY = startY + row * rowHeight;
+
+                // Shelf background box
+                ctx.fillStyle = item.unlocked ? '#3a2312' : '#26160b';
+                ctx.fillRect(itemX, itemY, 48, 28);
+                ctx.strokeStyle = item.unlocked ? '#8b5a2b' : '#452a15';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(itemX, itemY, 48, 28);
+
+                ctx.font = '16px sans-serif';
+                if (item.unlocked) {
+                    ctx.fillText(item.icon, itemX + 13, itemY + 20);
+                    // Register hit area for hovering tooltip
+                    counterFoodItems.push({
+                        x: itemX,
+                        y: itemY,
+                        w: 48,
+                        h: 28,
+                        menu: item
+                    });
+                } else {
+                    ctx.fillText('🔒', itemX + 14, itemY + 20);
+                }
+            });
+
+            tables.forEach(t => {
+                if (!t.active) return;
+                
+                ctx.fillStyle = '#5c3a21';
+                ctx.fillRect(t.x - 12, t.y + 20, 10, 30);
+                ctx.fillRect(t.x + t.width + 2, t.y + 20, 10, 30);
+
+                ctx.fillStyle = '#8b5a2b';
+                ctx.fillRect(t.x, t.y, t.width, t.height);
+                ctx.fillStyle = '#a46c36';
+                ctx.fillRect(t.x + 4, t.y + 4, t.width - 8, t.height - 8);
+
+                ctx.fillStyle = '#f5c77e';
+                ctx.font = '10px Press Start 2P, cursive';
+                ctx.fillText(`T${t.id}`, t.x + 8, t.y + 20);
+
+                if (t.customer && t.customer.state === 'EATING') {
+                    ctx.font = '18px sans-serif';
+                    ctx.fillText(t.customer.order.icon, t.x + 24, t.y + 45);
+                }
+            });
+
+            customers.forEach(c => c.draw());
+            drawWaiter();
+            drawFloatingTexts();
+        }
+
+        function drawWaiter() {
+            ctx.save();
+            
+            ctx.fillStyle = 'rgba(0,0,0,0.35)';
+            ctx.beginPath();
+            ctx.ellipse(waiter.x, waiter.y + 14, 12, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            const isMoving = Math.hypot(waiter.targetX - waiter.x, waiter.targetY - waiter.y) > 3;
+            const legSwing = isMoving ? Math.sin(waiter.animTimer * 2) * 6 : 0;
+            const bounce = isMoving ? Math.abs(Math.sin(waiter.animTimer * 2)) * 2 : 0;
+
+            ctx.fillStyle = '#1e293b';
+            if (isMoving) {
+                ctx.fillRect(waiter.x - 6 + legSwing, waiter.y + 2, 4, 10);
+                ctx.fillRect(waiter.x + 2 - legSwing, waiter.y + 2, 4, 10);
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(waiter.x - 7 + legSwing, waiter.y + 10, 5, 3);
+                ctx.fillRect(waiter.x + 2 - legSwing, waiter.y + 10, 5, 3);
+            } else {
+                ctx.fillRect(waiter.x - 6, waiter.y + 2, 5, 10);
+                ctx.fillRect(waiter.x + 1, waiter.y + 2, 5, 10);
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(waiter.x - 7, waiter.y + 10, 6, 3);
+                ctx.fillRect(waiter.x + 1, waiter.y + 10, 6, 3);
+            }
+
+            ctx.fillStyle = '#dc2626';
+            ctx.fillRect(waiter.x - 9, waiter.y - 12 - bounce, 18, 15);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(waiter.x - 6, waiter.y - 12 - bounce, 12, 5);
+
+            ctx.fillStyle = '#fed7aa';
+            if (waiter.holdingItem) {
+                ctx.fillStyle = '#dc2626';
+                ctx.fillRect(waiter.x - 12, waiter.y - 8 - bounce, 4, 6);
+                ctx.fillRect(waiter.x + 8, waiter.y - 8 - bounce, 4, 6);
+                ctx.fillStyle = '#fed7aa';
+                ctx.fillRect(waiter.x - 12, waiter.y - 2 - bounce, 4, 4);
+                ctx.fillRect(waiter.x + 8, waiter.y - 2 - bounce, 4, 4);
+            } else if (isMoving) {
+                ctx.fillStyle = '#dc2626';
+                ctx.fillRect(waiter.x - 12, waiter.y - 10 - bounce - legSwing * 0.5, 3, 8);
+                ctx.fillRect(waiter.x + 9, waiter.y - 10 - bounce + legSwing * 0.5, 3, 8);
+                ctx.fillStyle = '#fed7aa';
+                ctx.fillRect(waiter.x - 12, waiter.y - 2 - bounce - legSwing * 0.5, 3, 3);
+                ctx.fillRect(waiter.x + 9, waiter.y - 2 - bounce + legSwing * 0.5, 3, 3);
+            } else {
+                ctx.fillStyle = '#dc2626';
+                ctx.fillRect(waiter.x - 12, waiter.y - 8, 3, 8);
+                ctx.fillRect(waiter.x + 9, waiter.y - 8, 3, 8);
+                ctx.fillStyle = '#fed7aa';
+                ctx.fillRect(waiter.x - 12, waiter.y, 3, 3);
+                ctx.fillRect(waiter.x + 9, waiter.y, 3, 3);
+            }
+
+            ctx.fillStyle = '#fed7aa';
+            ctx.fillRect(waiter.x - 7, waiter.y - 24 - bounce, 14, 12);
+
+            ctx.fillStyle = '#fbbf24';
+            ctx.fillRect(waiter.x - 8, waiter.y - 27 - bounce, 16, 5);
+
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(waiter.x - 4, waiter.y - 20 - bounce, 2, 3);
+            ctx.fillRect(waiter.x + 2, waiter.y - 20 - bounce, 2, 3);
+
+            if (waiter.holdingItem) {
+                ctx.fillStyle = '#ffffff';
+                ctx.strokeStyle = '#b91c1c';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(waiter.x, waiter.y - 38 - bounce, 13, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.font = '14px sans-serif';
+                ctx.fillText(waiter.holdingItem.icon, waiter.x - 7, waiter.y - 33 - bounce);
+            }
+
+            ctx.restore();
+        }
+
+        // --- Main Game Loop ---
+        function loop() {
+            update();
+            drawScene();
+            requestAnimationFrame(loop);
+        }
+
+        // --- UI & Language Handlers ---
+        function updateLanguageUI() {
+            const lang = I18N[currentLang];
+            document.getElementById('ui-title').innerText = lang.title;
+            document.getElementById('ui-subtitle').innerText = lang.subtitle;
+            document.getElementById('ui-kyats').innerText = lang.kyats;
+            document.getElementById('ui-btn-shop').innerText = lang.shopBtn;
+            document.getElementById('ui-instructions').innerText = lang.instructions;
+
+            document.getElementById('ui-upgrade-title').innerText = lang.upgradeTitle;
+            document.getElementById('ui-upg-speed-name').innerText = lang.upgSpeedName;
+            document.getElementById('ui-upg-speed-desc').innerText = lang.upgSpeedDesc;
+            document.getElementById('ui-upg-table-name').innerText = lang.upgTableName;
+            document.getElementById('ui-upg-table-desc').innerText = lang.upgTableDesc;
+            document.getElementById('ui-upg-menu-name').innerText = lang.upgMenuName;
+            document.getElementById('ui-upg-menu-desc').innerText = lang.upgMenuDesc;
+            document.getElementById('btn-close-upgrade').innerText = lang.close;
+
+            const toggleBtn = document.getElementById('btn-toggle-shop');
+            toggleBtn.innerText = isShopOpen ? lang.closeShop : lang.openShop;
+        }
+
+        // Open/Close Shop Toggle Button Event
+        document.getElementById('btn-toggle-shop').addEventListener('click', () => {
+            isShopOpen = !isShopOpen;
+            const badge = document.getElementById('badge-shop-status');
+            const toggleBtn = document.getElementById('btn-toggle-shop');
+
+            if (isShopOpen) {
+                badge.className = "flex items-center gap-1 bg-green-950 px-3 py-1.5 rounded border border-green-600 font-bold text-green-300 text-xs";
+                badge.innerText = "🟢 OPEN";
+                toggleBtn.className = "pixel-btn px-3 py-1.5 text-xs font-bold text-amber-100 rounded bg-red-800";
+            } else {
+                badge.className = "flex items-center gap-1 bg-red-950 px-3 py-1.5 rounded border border-red-600 font-bold text-red-300 text-xs";
+                badge.innerText = "🔴 CLOSED";
+                toggleBtn.className = "pixel-btn px-3 py-1.5 text-xs font-bold text-amber-100 rounded bg-green-800";
+            }
+            updateLanguageUI();
+            sfx.playPop();
+        });
+
+        // Background Music Toggle Event
+        document.getElementById('btn-bgm').addEventListener('click', (e) => {
+            const active = sfx.toggleBGM();
+            e.target.innerText = active ? '🎵 BGM: ON' : '🎵 BGM: OFF';
+        });
+
+        document.getElementById('btn-lang').addEventListener('click', () => {
+            currentLang = currentLang === 'my' ? 'en' : 'my';
+            updateLanguageUI();
+            sfx.playPop();
+        });
+
+        document.getElementById('btn-sound').addEventListener('click', (e) => {
+            sfx.muted = !sfx.muted;
+            e.target.innerText = sfx.muted ? '🔇 SFX: OFF' : '🔊 SFX: ON';
+        });
+
+        const upgradeModal = document.getElementById('upgrade-modal');
+        document.getElementById('btn-open-upgrade').addEventListener('click', () => {
+            upgradeModal.classList.remove('hidden');
+            sfx.playPop();
+        });
+
+        document.getElementById('btn-close-upgrade').addEventListener('click', () => {
+            upgradeModal.classList.add('hidden');
+            sfx.playPop();
+        });
+
+        document.getElementById('btn-upg-speed').addEventListener('click', (e) => {
+            const cost = 500;
+            if (money >= cost && speedLevel < 3) {
+                money -= cost;
+                waiter.speed += 1.2;
+                speedLevel++;
+                sfx.playCoin();
+                if (speedLevel >= 3) {
+                    e.target.innerText = I18N[currentLang].maxed;
+                    e.target.disabled = true;
+                } else {
+                    e.target.innerText = `${cost} Ks (Lv ${speedLevel + 1})`;
+                }
+            } else if (money < cost) {
+                createFloatingText("ပိုက်ဆံ မလုံလောက်ပါ!", waiter.x, waiter.y - 30, '#ef4444');
+                sfx.playAngry();
+            }
+        });
+
+        document.getElementById('btn-upg-table').addEventListener('click', (e) => {
+            const cost = 700;
+            if (money >= cost && maxTables < 6) {
+                money -= cost;
+                maxTables++;
+                const lockedTable = tables.find(t => !t.active);
+                if (lockedTable) lockedTable.active = true;
+                sfx.playCoin();
+                if (maxTables >= 6) {
+                    e.target.innerText = I18N[currentLang].maxed;
+                    e.target.disabled = true;
+                } else {
+                    e.target.innerText = `${cost} Ks (${maxTables}/6)`;
+                }
+            } else if (money < cost) {
+                createFloatingText("ပိုက်ဆံ မလုံလောက်ပါ!", waiter.x, waiter.y - 30, '#ef4444');
+                sfx.playAngry();
+            }
+        });
+
+        document.getElementById('btn-upg-menu').addEventListener('click', (e) => {
+            const cost = 1000;
+            const hasLocked = MENU.some(m => !m.unlocked);
+            if (money >= cost && hasLocked) {
+                money -= cost;
+                MENU.forEach(m => m.unlocked = true);
+                sfx.playCoin();
+                e.target.innerText = I18N[currentLang].maxed;
+                e.target.disabled = true;
+            } else if (money < cost) {
+                createFloatingText("ပိုက်ဆံ မလုံလောက်ပါ!", waiter.x, waiter.y - 30, '#ef4444');
+                sfx.playAngry();
+            }
+        });
+
+        window.onload = function() {
+            updateLanguageUI();
+            spawnCustomer();
+            setTimeout(spawnCustomer, 2000);
+            loop();
+        };
+    </script>
+</body>
+</html>
